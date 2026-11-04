@@ -1,8 +1,10 @@
 name: Build installer & Release
 
-# Запускается, когда в репозиторий отправлен тег вида v1.0.0,
-# или вручную со вкладки Actions (тогда установщик просто сохраняется как artifact).
+# Запускается, когда на GitHub публикуется релиз (или отправлен тег вида v1.0.0).
+# Можно запустить и вручную со вкладки Actions, тогда установщик сохраняется как artifact.
 on:
+  release:
+    types: [published]
   push:
     tags: ["v*"]
   workflow_dispatch:
@@ -82,8 +84,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          name: Мини-банк ${{ github.ref_name }}
-          body_path: RELEASE_NOTES.md
+          tag_name: ${{ github.ref_name }}
           files: |
             dist/MiniBank-Setup-*.exe
             db/er-diagram.drawio
