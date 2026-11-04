@@ -14,6 +14,16 @@ Python 3, интерфейс на Tkinter, база данных SQLite.
 - перевод между любыми счетами с проверкой остатка;
 - история всех операций.
 
+## Скриншоты
+
+| Клиенты | Счета |
+|---|---|
+| ![](docs/screenshots/1-clients.png) | ![](docs/screenshots/2-accounts.png) |
+| **Переводы** | **История** |
+| ![](docs/screenshots/3-transfer.png) | ![](docs/screenshots/4-history.png) |
+
+Скриншоты снимает workflow `screenshots.yml`: он запускает программу на Windows с демо-данными (`tools/seed_demo.py`).
+
 ## Установка
 
 Скачайте `MiniBank-Setup-x.y.z.exe` со страницы [Releases](../../releases) и запустите. Установщик создаст ярлык в меню «Пуск» и, по желанию, на рабочем столе. База данных хранится в `%APPDATA%\MiniBank\minibank.db`.
