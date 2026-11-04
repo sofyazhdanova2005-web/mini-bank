@@ -37,26 +37,25 @@ jobs:
           }
           "@
           New-Item -ItemType Directory -Force docs/screenshots | Out-Null
-          $p = Start-Process python -ArgumentList "main.py" -PassThru
-          Start-Sleep -Seconds 8
-          $h = [W]::FindWindow($null, "Мини-банк 1.0.0")
-          if ($h -eq [IntPtr]::Zero) { $p.Refresh(); $h = $p.MainWindowHandle }
-          if ($h -eq [IntPtr]::Zero) { throw "Окно программы не найдено" }
           $names = "1-clients", "2-accounts", "3-transfer", "4-history"
-          foreach ($n in $names) {
+          for ($i = 0; $i -lt 4; $i++) {
+            $env:MINIBANK_TAB = "$i"
+            $p = Start-Process python -ArgumentList "main.py" -PassThru
+            Start-Sleep -Seconds 6
+            $h = [W]::FindWindow($null, "Мини-банк 1.0.0")
+            if ($h -eq [IntPtr]::Zero) { $p.Refresh(); $h = $p.MainWindowHandle }
+            if ($h -eq [IntPtr]::Zero) { throw "Окно программы не найдено" }
             [W]::SetForegroundWindow($h) | Out-Null
             Start-Sleep -Milliseconds 800
             $r = New-Object W+RECT
             [W]::GetWindowRect($h, [ref]$r) | Out-Null
-            $w = $r.R - $r.L; $hh = $r.B - $r.T
-            $bmp = New-Object System.Drawing.Bitmap $w, $hh
+            $bmp = New-Object System.Drawing.Bitmap ($r.R - $r.L), ($r.B - $r.T)
             $g = [System.Drawing.Graphics]::FromImage($bmp)
             $g.CopyFromScreen($r.L, $r.T, 0, 0, $bmp.Size)
-            $bmp.Save("docs/screenshots/$n.png")
-            [System.Windows.Forms.SendKeys]::SendWait("^{TAB}")
+            $bmp.Save("docs/screenshots/$($names[$i]).png")
+            Stop-Process -Id $p.Id
             Start-Sleep -Seconds 1
           }
-          Stop-Process -Id $p.Id
           Get-ChildItem docs/screenshots
 
       - name: Сохранить скриншоты в репозиторий
@@ -65,5 +64,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/screenshots
-          git commit -m "Скриншоты программы"
+          git commit -m "Скриншоты программы" || echo "без изменений"
           git push

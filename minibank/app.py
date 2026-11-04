@@ -1,5 +1,6 @@
 """Окно программы на Tkinter."""
 
+import os
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -29,6 +30,9 @@ class App(tk.Tk):
         tabs.add(self._history_tab(tabs), text="История")
         tabs.bind("<<NotebookTabChanged>>", lambda e: self.refresh())
         tabs.enable_traversal()  # Ctrl+Tab переключает вкладки
+        start_tab = os.environ.get("MINIBANK_TAB", "")
+        if start_tab.isdigit() and int(start_tab) < len(tabs.tabs()):
+            tabs.select(int(start_tab))
 
         self.refresh()
 
