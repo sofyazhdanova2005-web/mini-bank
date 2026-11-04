@@ -28,6 +28,7 @@ class App(tk.Tk):
         tabs.add(self._transfer_tab(tabs), text="Переводы")
         tabs.add(self._history_tab(tabs), text="История")
         tabs.bind("<<NotebookTabChanged>>", lambda e: self.refresh())
+        tabs.enable_traversal()  # Ctrl+Tab переключает вкладки
 
         self.refresh()
 

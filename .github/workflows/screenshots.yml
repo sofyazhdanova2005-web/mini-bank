@@ -1,0 +1,66 @@
+name: Screenshots
+
+# Запускает программу на Windows с демо-данными, снимает каждую вкладку
+# и сохраняет картинки в docs/screenshots (для README и отчёта).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Демо-данные
+        run: python tools/seed_demo.py
+
+      - name: Запуск программы и снимки вкладок
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Add-Type @"
+          using System; using System.Runtime.InteropServices;
+          public class W {
+            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+            [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+            [DllImport("user32.dll")] public static extern IntPtr FindWindow(string c, string t);
+            public struct RECT { public int L, T, R, B; }
+          }
+          "@
+          New-Item -ItemType Directory -Force docs/screenshots | Out-Null
+          $p = Start-Process python -ArgumentList "main.py" -PassThru
+          Start-Sleep -Seconds 8
+          $h = [W]::FindWindow($null, "Мини-банк 1.0.0")
+          if ($h -eq [IntPtr]::Zero) { throw "Окно программы не найдено" }
+          $names = "1-clients", "2-accounts", "3-transfer", "4-history"
+          foreach ($n in $names) {
+            [W]::SetForegroundWindow($h) | Out-Null
+            Start-Sleep -Milliseconds 800
+            $r = New-Object W+RECT
+            [W]::GetWindowRect($h, [ref]$r) | Out-Null
+            $w = $r.R - $r.L; $hh = $r.B - $r.T
+            $bmp = New-Object System.Drawing.Bitmap $w, $hh
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($r.L, $r.T, 0, 0, $bmp.Size)
+            $bmp.Save("docs/screenshots/$n.png")
+            [System.Windows.Forms.SendKeys]::SendWait("^{TAB}")
+            Start-Sleep -Seconds 1
+          }
+          Stop-Process -Id $p.Id
+          Get-ChildItem docs/screenshots
+
+      - name: Сохранить скриншоты в репозиторий
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          git commit -m "Скриншоты программы"
+          git push
