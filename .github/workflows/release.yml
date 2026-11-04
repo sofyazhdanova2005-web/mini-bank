@@ -1,12 +1,10 @@
 name: Build installer & Release
 
-# Запускается, когда на GitHub публикуется релиз (или отправлен тег вида v1.0.0).
+# Запускается, когда на GitHub публикуется релиз с тегом вида v1.0.0.
 # Можно запустить и вручную со вкладки Actions, тогда установщик сохраняется как artifact.
 on:
   release:
     types: [published]
-  push:
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:

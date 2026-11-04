@@ -43,11 +43,10 @@ ER-диаграмма нарисована в draw.io: [`db/er-diagram.drawio`](
 
 ## Сборка установщика
 
-Установщик собирается автоматически workflow `release.yml`, когда в репозиторий отправлен тег версии:
+Установщик собирается автоматически workflow `release.yml`, когда на GitHub публикуется релиз с тегом версии (например, `v1.0.0`):
 
 ```
-git tag v1.0.0
-git push origin v1.0.0
+gh release create v1.0.0 --title "Мини-банк v1.0.0" --notes-file RELEASE_NOTES.md
 ```
 
 Порядок сборки: тесты, затем PyInstaller делает `MiniBank.exe`, затем Inno Setup упаковывает его в установщик по скрипту [`installer/minibank.iss`](installer/minibank.iss). После этого установщик проверяется тихой установкой и пробным запуском. Готовый `.exe`, ER-диаграмма и SQL-скрипт публикуются в GitHub Releases.
