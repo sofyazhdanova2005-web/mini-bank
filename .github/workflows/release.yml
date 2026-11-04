@@ -1,0 +1,91 @@
+name: Build installer & Release
+
+# Запускается, когда в репозиторий отправлен тег вида v1.0.0,
+# или вручную со вкладки Actions (тогда установщик просто сохраняется как artifact).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+
+      - name: Тесты перед сборкой
+        run: pytest -v
+
+      - name: Версия из тега
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}"
+          if ($v -notmatch '^v\d') { $v = "v1.0.0" }
+          "APP_VERSION=$($v.TrimStart('v'))" >> $env:GITHUB_ENV
+
+      - name: Сборка MiniBank.exe (PyInstaller)
+        run: pyinstaller --noconfirm --onefile --windowed --name MiniBank --add-data "minibank/schema.sql;minibank" main.py
+
+      - name: Установка Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Сборка установщика (Inno Setup)
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:APP_VERSION" installer\minibank.iss
+          Get-ChildItem dist
+
+      - name: Проверка установки в тихом режиме
+        shell: pwsh
+        run: |
+          $setup = "dist\MiniBank-Setup-$env:APP_VERSION.exe"
+          Start-Process $setup -ArgumentList "/VERYSILENT","/CURRENTUSER","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs\MiniBank\MiniBank.exe","$env:ProgramFiles\MiniBank\MiniBank.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { throw "MiniBank.exe не найден после установки" }
+          "Установлено: $($exe.FullName)"
+          "INSTALLED_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+
+      - name: Запуск программы и скриншот окна
+        shell: pwsh
+        run: |
+          $p = Start-Process $env:INSTALLED_EXE -PassThru
+          Start-Sleep -Seconds 12
+          if ($p.HasExited) { throw "Программа закрылась сразу после запуска" }
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("dist\screenshot.png")
+          Stop-Process -Id $p.Id
+
+      - name: Сохранить файлы сборки (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiniBank-${{ env.APP_VERSION }}
+          path: |
+            dist/MiniBank-Setup-*.exe
+            dist/screenshot.png
+            db/*
+
+      - name: Опубликовать релиз
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Мини-банк ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            dist/MiniBank-Setup-*.exe
+            db/er-diagram.drawio
+            db/er-diagram.png
+            minibank/schema.sql
